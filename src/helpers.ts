@@ -1,4 +1,10 @@
-import { IBoardState, PieceType, ColorType, ISquare } from "./interfaces";
+import {
+	IBoardState,
+	PieceType,
+	ColorType,
+	ISquare,
+	IPiece,
+} from "./interfaces";
 import SimpleCrypto from "simple-crypto-js";
 
 // we don't actually care about security, we just want some strings to not be
@@ -27,39 +33,42 @@ export function cleanedObject(data: any): any {
 	return rv;
 }
 
-// export function calculateLinkUrl(targetPlayer: IPlayer): string {
-// 	const url = new URL(location.pathname, location.href).href;
-// 	const clean = cleanedObject(targetPlayer);
-// 	const data = encrypt(clean);
-// 	return `${url}?secret=${encodeURIComponent(data)}`;
-// }
+export function calculateLinkUrl(boardState: IBoardState): string {
+	const url = new URL(location.pathname, location.href).href;
+	const clean = cleanedObject(boardState);
+	const data = encrypt(clean);
+	return `${url}?state=${encodeURIComponent(data)}`;
+}
 
-// export function decodeLinkUri(uri: string): IPlayer {
-// 	const data = decrypt(decodeURIComponent(uri));
-// 	return data;
-// }
+export function decodeBoardState(uri: string): IBoardState | null {
+	if (!uri) {
+		return null;
+	}
+
+	const data = decrypt(decodeURIComponent(uri));
+	if (data && data.pieces) {
+		return data as IBoardState;
+	}
+
+	return null;
+}
 
 export function generateSquares(boardState: IBoardState): ISquare[] {
 	let squares: ISquare[] = [];
 	let id = 0;
 	for (let i = 0; i < 8; i++) {
 		for (let j = 0; j < 8; j++) {
+			let matchingPiece: IPiece | undefined = boardState.pieces.find(
+				(piece) => piece.row === i && piece.col === j
+			);
 			let square: ISquare = {
 				id,
-				backgroundUrl: "",
+				piece: matchingPiece,
+				row: i,
+				col: j,
 				backgroundColor:
 					id % 2 === 0 ? ColorType.white : ColorType.black,
 			};
-
-			let match = boardState.pieces.find(
-				(piece) => piece.row === i && piece.col === j
-			);
-			if (match) {
-				square.backgroundUrl = getPieceIcon(
-					match.pieceType,
-					match.colorType
-				);
-			}
 			squares.push(square);
 			id += 1;
 		}
@@ -69,34 +78,74 @@ export function generateSquares(boardState: IBoardState): ISquare[] {
 	return squares;
 }
 
-export function encodeBoardState(boardState: IBoardState): string {
-	return "TODO";
-}
-
-export function decodeBoardState(uri: string): IBoardState {
-	return {
-		pieces: [],
-	};
-}
-
 export function getDefaultBoardState(): IBoardState {
+	let pieces: IPiece[] = [];
+	let color = ColorType.black;
+	let pieceTypes = [
+		PieceType.rook,
+		PieceType.knight,
+		PieceType.bishop,
+		PieceType.queen,
+		PieceType.king,
+		PieceType.bishop,
+		PieceType.knight,
+		PieceType.rook,
+	];
+
+	let row = 0;
+	let col = 0;
+	for (let pieceType of pieceTypes) {
+		pieces.push({
+			pieceType,
+			colorType: color,
+			row,
+			col,
+		});
+		col += 1;
+	}
+
+	row = 1;
+	for (let col = 0; col < 8; col++) {
+		pieces.push({
+			pieceType: PieceType.pawn,
+			colorType: color,
+			row,
+			col,
+		});
+	}
+
+	color = ColorType.white;
+	row = 6;
+	for (let col = 0; col < 8; col++) {
+		pieces.push({
+			pieceType: PieceType.pawn,
+			colorType: color,
+			row,
+			col,
+		});
+	}
+
+	row = 7;
+	col = 0;
+	for (let pieceType of pieceTypes) {
+		pieces.push({
+			pieceType,
+			colorType: color,
+			row,
+			col,
+		});
+		col += 1;
+	}
+
 	return {
-		pieces: [
-			{
-				pieceType: PieceType.bishop,
-				colorType: ColorType.black,
-				row: 0,
-				col: 0,
-			},
-		],
+		pieces,
 	};
 }
 
-export function getPieceIcon(piece: PieceType, color: ColorType) {
-	const colorString = getColorString(color);
-	const pieceString = getPieceString(piece);
+export function getPieceIcon(piece: IPiece) {
+	const colorString = getColorString(piece.colorType);
+	const pieceString = getPieceString(piece.pieceType);
 	return `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${colorString}${pieceString}.png`;
-	// return `url('https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${colorString}${pieceString}.png')`;
 }
 
 function getColorString(color: ColorType): string {
@@ -112,7 +161,7 @@ function getPieceString(piece: PieceType): string {
 		case PieceType.bishop:
 			return "b";
 		case PieceType.knight:
-			return "k";
+			return "n";
 		case PieceType.rook:
 			return "r";
 		case PieceType.king:
@@ -130,7 +179,7 @@ function getPieceType(piece: string): PieceType {
 	switch (piece) {
 		case "b":
 			return PieceType.bishop;
-		case "k":
+		case "n":
 			return PieceType.knight;
 		case "r":
 			return PieceType.rook;

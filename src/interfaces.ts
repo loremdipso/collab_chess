@@ -1,9 +1,11 @@
 export const VERSION = 1;
 
 export interface ISquare {
-	backgroundUrl: string;
+	piece?: IPiece;
 	backgroundColor: ColorType;
 	id: number;
+	col: number;
+	row: number;
 }
 
 export interface IBoardState {

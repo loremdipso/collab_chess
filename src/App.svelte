@@ -5,41 +5,62 @@
 		document.body.scrollTop = 0;
 	});
 
-	import Icon from "smelte/src/components/Icon";
-
 	import Toast from "./common/Toast.svelte";
 	import { toaster } from "./common/Toast.svelte";
 	import GithubCorner from "./common/GithubCorner.svelte";
-	import InfoDialog from "./components/InfoDialog.svelte";
 	import Board from "./components/Board.svelte";
-	import type { IBoardState } from "./interfaces";
-	import { decodeBoardState, getDefaultBoardState } from "./helpers";
+	import type { IBoardState, ISquare } from "./interfaces";
+	import {
+		calculateLinkUrl,
+		decodeBoardState,
+		generateSquares,
+		getDefaultBoardState,
+	} from "./helpers";
 
-	let showInfo = false;
 	// let showPlayerEntry = true;
 	// let matchups: IResultPair[] = [];
 
-	function doShare() {
-		throw "todo";
-		// // TODO: show loading graphic? Or will it just freeze?
-		// if (players.length == 0) {
-		// 	return;
-		// }
-
-		// matchups = getMatchups(players.slice(0, players.length - 1), true);
-		// if (matchups.length === players.length - 1) {
-		// 	showPlayerEntry = false;
-		// } else {
-		// 	toaster.alert("Can't find a valid set of pairings :(");
-		// }
+	function getBoardState(): IBoardState {
+		const urlParams = new URLSearchParams(window.location.search);
+		const state = urlParams.get("state");
+		return state ? decodeBoardState(state) : getDefaultBoardState();
 	}
 
-	const urlParams = new URLSearchParams(window.location.search);
-	const state = urlParams.get("state");
+	export let boardState: IBoardState = getBoardState();
+	export let squares: ISquare[] = generateSquares(boardState);
 
-	export let boardState: IBoardState = state
-		? decodeBoardState(state)
-		: getDefaultBoardState();
+	function doReset() {
+		boardState = getDefaultBoardState();
+		squares = generateSquares(boardState);
+		doResetUrl();
+	}
+
+	addEventListener("popstate", (event) => {
+		boardState = getBoardState();
+		squares = generateSquares(boardState);
+	});
+
+	let url = "";
+	function doResetUrl() {
+		const url = new URL(location.pathname, location.href);
+		url.searchParams.delete("state");
+		window.history.pushState({}, "", url);
+	}
+
+	function doUpdateUrl() {
+		let url = calculateLinkUrl(boardState);
+		window.history.pushState({}, "", url);
+	}
+
+	function doShare() {
+		let url = calculateLinkUrl(boardState); // just in case
+		if (navigator.share) {
+			navigator.share({ url });
+		} else {
+			navigator.clipboard.writeText(url);
+			toaster.notify("Added link to clipboard");
+		}
+	}
 
 	// isDebug
 	// if (!state) {
@@ -77,7 +98,7 @@
 	>
 		<h6 class="select-none pl-3 tracking-widest text-lg">
 			<a href="." class="text-white"
-				>Collaborative
+				>Collab
 				<img
 					src="collab.svg"
 					alt="Chess doesn't have to have winners AND losers"
@@ -87,10 +108,6 @@
 			>
 		</h6>
 
-		<div class="absolute right-0 cursor-pointer pr-5" title="Show info">
-			<Icon on:click={() => (showInfo = true)}>info</Icon>
-		</div>
-
 		<GithubCorner
 			href="https://github.com/loremdipso/collab_chess"
 			position="topLeft"
@@ -98,12 +115,17 @@
 		/>
 	</header>
 
-	<InfoDialog bind:showDialog={showInfo} />
-
 	<Toast />
 
 	<div class="fade-in w-full">
-		<Board bind:boardState on:share={doShare} />
+		<Board
+			bind:boardState
+			bind:squares
+			on:share={doShare}
+			on:updateurl={doUpdateUrl}
+			on:reseturl={doResetUrl}
+			on:reset={doReset}
+		/>
 	</div>
 </main>
 

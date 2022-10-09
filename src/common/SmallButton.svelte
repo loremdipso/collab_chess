@@ -8,7 +8,7 @@
 	export let reverse: boolean = false;
 	export let classes: string = "";
 	export let color: string;
-	export let icon: string;
+	export let icon: string = "";
 	export let title: string;
 
 	$: baseClasses = `m-1 px-3 py-2 small-button-vertical-padding ${classes}`;
@@ -31,7 +31,7 @@
 
 <style lang="scss">
 	:global(.small-button-vertical-padding) {
-		$padding: 0.5rem;
+		$padding: 0.2rem;
 		padding-top: $padding;
 		padding-bottom: $padding;
 	}
